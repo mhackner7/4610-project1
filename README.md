@@ -93,7 +93,9 @@ commit compiled artifacts. The project root is this folder, not the original tar
 
 ### Chloe Patrick
 
-Parts 0-3 were supplied in `shell_updated.tar`. Chloe established the core foundation of the shell by building the interactive prompt, parsing user input into token lists, and implementing both environment variable and tilde expansion.
+| Date | Work completed |
+| --- | --- |
+| 2026-09-26 | Parts 0-3 were supplied in `shell_updated.tar`. Chloe established the core foundation of the shell by building the interactive prompt, parsing user input into token lists, and implementing both environment variable and tilde expansion.
 
 ### Juan Medina Molina
 
