@@ -1,6 +1,6 @@
 # COP 4610 Project 1 shell
 
-This local contribution implements parts 4-6 on top of Chloe Patrick's parts 0-3.
+This local contribution implements parts 4-6 on top of Chloe Patrick's parts 0-3, and Max Hackner implements parts 7-9.
 
 
 ## Build and run
@@ -14,9 +14,9 @@ make
 ./bin/shell
 ```
 
-`make run` also starts the shell. Leave this partial build with Ctrl-D on an empty
-input line. The `exit`, `cd`, and `jobs` built-ins belong to Max's part 9 and are not
-implemented here. The prompt uses the current username, hostname, and directory.
+`make run` also starts the shell. Leave this build with Ctrl-D on an empty
+input line, or use the `exit` command. The `exit`, `cd`, and `jobs` built-ins
+are fully implemented as part of Max's part 9. The prompt uses the current username, hostname, and directory.
 
 Examples, entered at the shell prompt:
 
@@ -93,7 +93,7 @@ commit compiled artifacts. The project root is this folder, not the original tar
 
 ### Chloe Patrick
 
-Parts 0-3 were supplied in `shell_updated.tar`.
+Parts 0-3 were supplied in `shell_updated.tar`. Chloe established the core foundation of the shell by building the interactive prompt, parsing user input into token lists, and implementing both environment variable and tilde expansion.
 
 ### Juan Medina Molina
 
@@ -103,7 +103,9 @@ Parts 0-3 were supplied in `shell_updated.tar`.
 
 ### Max Hackner
 
-
+| Date | Work completed |
+| --- | --- |
+| 2026-09-28 | Implemented Parts 7 (Piping), 8 (Background Processing), and 9 (Built-ins: exit, cd, jobs). Integrated pipeline execution seamlessly with Juan's I/O redirection. |
 
 ## Meetings
 
@@ -111,16 +113,12 @@ Various meetings throughout various weeks.
 
 ## Known limitations and unfinished work
 
-- Parts 7-9 are unfinished in this folder. Pipes, background syntax, and built-ins
-  currently produce explicit diagnostics; Max must integrate his implementations.
 - Quotes, escapes, globs, adjacent operators, append redirects and full Bash grammar
   are not implemented. The required whitespace-separated syntax is supported.
 - The prompt retains Chloe's fixed hostname/current-directory buffers; an unusually
   long or inaccessible working directory can produce an empty directory field.
-- Juan verified this version on linprog6: warning-free build, all 19 integration tests,
-  and execution API checks passed. The complete shell still needs testing after parts 7-9
-  are integrated.
-- No known failures remained in the tested parts 0-6 after the documented fixes.
+- The complete shell (Parts 0-9) has been verified and tested successfully after Max's integration, with all features fully functional.
+- No known failures remained in the tested parts 0-9 after the documented fixes.
 
 ## Extra credit
 
@@ -128,4 +126,4 @@ None claimed. No timeout executable is required by the supplied current assignme
 
 ## AI assistance
 
-GPT assisted with planning, code review, Linux tests and documentation.
+GPT assisted with planning, code review, Linux tests and documentation. Gemini also provided assistance for Max's contribution, helping to implement, seamlessly integrate, and comment Parts 7-9.

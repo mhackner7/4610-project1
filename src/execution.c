@@ -130,3 +130,201 @@ cleanup:
     free_redirection(&redir);
     return result;
 }
+
+// ==========================================
+// Parts 7, 8, 9 Implementation
+// ==========================================
+
+#include <sys/stat.h>
+
+#define MAX_JOBS 10
+typedef struct {
+    int job_id;
+    pid_t pid;
+    char cmd_line[256];
+    int active;
+} BackgroundJob;
+
+static BackgroundJob jobs[MAX_JOBS];
+static int next_job_id = 1;
+
+/*
+ * check_background_jobs (Part 8)
+ * Iterates through the active jobs array. Uses waitpid with WNOHANG
+ * to silently check if any background processes have finished.
+ * Outputs the completion message if they have.
+ */
+void check_background_jobs(void) {
+    int status;
+    for (int i = 0; i < MAX_JOBS; i++) {
+        if (jobs[i].active) {
+            pid_t result = waitpid(jobs[i].pid, &status, WNOHANG);
+            if (result > 0) {
+                printf("[%d]+ done %s\n", jobs[i].job_id, jobs[i].cmd_line);
+                jobs[i].active = 0;
+            } else if (result == -1) {
+                jobs[i].active = 0;
+            }
+        }
+    }
+}
+
+/*
+ * execute_builtin_cd (Part 9)
+ * Built-in for changing directories. Defaults to $HOME if no args.
+ * Validates existence and checks if target is a directory.
+ */
+void execute_builtin_cd(const tokenlist *tokens) {
+    const char *target = NULL;
+    if (tokens->size > 1) target = tokens->items[1];
+    
+    if (tokens->size > 2) {
+        fprintf(stderr, "cd: too many arguments\n");
+        return;
+    }
+    
+    if (target == NULL) {
+        target = getenv("HOME");
+    }
+    
+    struct stat statbuf;
+    if (stat(target, &statbuf) != 0) {
+        fprintf(stderr, "cd: %s: No such file or directory\n", target);
+        return;
+    }
+    if (!S_ISDIR(statbuf.st_mode)) {
+        fprintf(stderr, "cd: %s: Not a directory\n", target);
+        return;
+    }
+    
+    if (chdir(target) != 0) {
+        perror("cd failed");
+    }
+}
+
+/*
+ * execute_builtin_jobs (Part 9)
+ * Iterates over the background jobs array and prints active jobs.
+ */
+void execute_builtin_jobs(void) {
+    int count = 0;
+    for (int i = 0; i < MAX_JOBS; i++) {
+        if (jobs[i].active) {
+            printf("[%d]+ %d %s\n", jobs[i].job_id, jobs[i].pid, jobs[i].cmd_line);
+            count++;
+        }
+    }
+    if (count == 0) {
+        printf("No active background jobs.\n");
+    }
+}
+
+/*
+ * execute_builtin_exit (Part 9)
+ * Waits for all background processes to gracefully exit,
+ * prints the rolling history of valid commands, then terminates the shell.
+ */
+void execute_builtin_exit(char history[3][256], int history_count) {
+    for (int i = 0; i < MAX_JOBS; i++) {
+        if (jobs[i].active) {
+            waitpid(jobs[i].pid, NULL, 0);
+        }
+    }
+    
+    if (history_count == 0) {
+        printf("No valid commands in history.\n");
+    } else {
+        printf("Last valid commands:\n");
+        for (int i = 0; i < history_count; i++) {
+            printf("%d: %s\n", i + 1, history[i]);
+        }
+    }
+    exit(0);
+}
+
+/*
+ * execute_pipeline (Part 7, 8)
+ * Handles sequential piping (up to 3 commands / 2 pipes), applies
+ * external file redirection to each via `exec_external_child`, 
+ * and handles background execution monitoring.
+ */
+void execute_pipeline(tokenlist **cmds, int num_cmds, int is_bg, const char *raw_cmd) {
+    int pipes[2][2];
+    pid_t pids[3];
+
+    for (int i = 0; i < num_cmds - 1; i++) {
+        if (pipe(pipes[i]) == -1) {
+            perror("pipe failed");
+            return;
+        }
+    }
+
+    for (int i = 0; i < num_cmds; i++) {
+        redirection redir;
+        tokenlist *arguments;
+        if (!parse_redirection(cmds[i], &redir, &arguments)) {
+            continue;
+        }
+
+        char *path = resolve_path(arguments->items[0]);
+        if (path == NULL) {
+            fprintf(stderr, "%s: %s\n", arguments->items[0],
+                    errno == ENOENT ? "command not found" : strerror(errno));
+            free_tokens(arguments);
+            free_redirection(&redir);
+            continue;
+        }
+        
+        free(arguments->items[0]);
+        arguments->items[0] = path;
+
+        pids[i] = fork();
+        if (pids[i] == -1) {
+            perror("fork failed");
+            free_tokens(arguments);
+            free_redirection(&redir);
+            return;
+        }
+        
+        if (pids[i] == 0) {
+            if (i > 0) dup2(pipes[i-1][0], STDIN_FILENO);
+            if (i < num_cmds - 1) dup2(pipes[i][1], STDOUT_FILENO);
+
+            for (int j = 0; j < num_cmds - 1; j++) {
+                close(pipes[j][0]);
+                close(pipes[j][1]);
+            }
+            
+            exec_external_child(path, arguments->items, &redir, -1);
+        }
+
+        free_tokens(arguments);
+        free_redirection(&redir);
+    }
+
+    for (int i = 0; i < num_cmds - 1; i++) {
+        close(pipes[i][0]);
+        close(pipes[i][1]);
+    }
+
+    if (is_bg && num_cmds > 0) {
+        int slot = -1;
+        for (int i = 0; i < MAX_JOBS; i++) {
+            if (!jobs[i].active) { slot = i; break; }
+        }
+        if (slot != -1) {
+            jobs[slot].job_id = next_job_id++;
+            jobs[slot].pid = pids[num_cmds - 1]; 
+            strncpy(jobs[slot].cmd_line, raw_cmd, 255);
+            jobs[slot].cmd_line[255] = '\0';
+            jobs[slot].active = 1;
+            printf("[%d] %d\n", jobs[slot].job_id, jobs[slot].pid);
+        } else {
+            fprintf(stderr, "Max background jobs reached.\n");
+        }
+    } else {
+        for (int i = 0; i < num_cmds; i++) {
+            waitpid(pids[i], NULL, 0);
+        }
+    }
+}

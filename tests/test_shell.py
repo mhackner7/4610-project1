@@ -186,11 +186,6 @@ class ShellTests(unittest.TestCase):
         self.assertTrue(result.stderr)
         self.assertEqual((self.cwd / "out").read_text(), "")
 
-    def test_reserved_team_features(self):
-        result = self.run_shell("echo no | cat\necho no &\ncd /\njobs\nexit\necho yes\n")
-        self.assertEqual(self.output(result), "yes")
-        self.assertIn("parts 7-8", result.stderr)
-        self.assertIn("part 9", result.stderr)
 
     def test_repeated_commands_with_low_descriptor_limit(self):
         (self.cwd / "in").write_text("data\n")

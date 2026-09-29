@@ -20,3 +20,10 @@ pid_t spawn_external(const char *path, char *const argv[],
                      const redirection *redir, int *report_fd);
 execution_result wait_external(pid_t pid, int report_fd);
 execution_result execute_external(const tokenlist *tokens);
+
+/* --- Added for Parts 7, 8, 9 --- */
+void check_background_jobs(void);
+void execute_builtin_cd(const tokenlist *tokens);
+void execute_builtin_jobs(void);
+void execute_builtin_exit(char history[3][256], int history_count);
+void execute_pipeline(tokenlist **cmds, int num_cmds, int is_bg, const char *raw_cmd);
