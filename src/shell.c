@@ -133,4 +133,4 @@ void expand_tilde(tokenlist *tokens)
             tokens->items[i] = expanded;
         }
     }
-}~
+}

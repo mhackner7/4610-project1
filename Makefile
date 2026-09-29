@@ -1,32 +1,33 @@
-SRC := src
-OBJ := obj
-BIN := bin
-EXECUTABLE:= shell
+CC = gcc
+CPPFLAGS = -D_POSIX_C_SOURCE=200809L -Iinclude
+CFLAGS = -std=c99 -g -Wall -Wextra -Wpedantic
+LDFLAGS =
+SRCS := $(wildcard src/*.c)
+OBJS := $(patsubst src/%.c,obj/%.o,$(SRCS))
 
-SRCS := $(wildcard $(SRC)/*.c)
-OBJS := $(patsubst $(SRC)/%.c,$(OBJ)/%.o,$(SRCS))
-INCS := -Iinclude/
-DIRS := $(OBJ)/ $(BIN)/
-EXEC := $(BIN)/$(EXECUTABLE)
+all: bin/shell
 
-CC := gcc
-CFLAGS := -g -Wall -std=c99 $(INCS)
-LDFLAGS :=
+bin/shell: $(OBJS) | bin
+	$(CC) $(LDFLAGS) $(OBJS) -o $@
 
-all: $(EXEC)
+obj/%.o: src/%.c | obj
+	$(CC) $(CPPFLAGS) $(CFLAGS) -MMD -MP -c $< -o $@
 
-$(EXEC): $(OBJS)
-	$(CC) $(CFLAGS) $(OBJS) -o $(EXEC)
+obj bin:
+	mkdir -p $@
 
-$(OBJ)/%.o: $(SRC)/%.c
-	$(CC) $(CFLAGS) -c $< -o $@
+run: bin/shell
+	./bin/shell
 
-run: $(EXEC)
-	$(EXEC)
+obj/test_execution: tests/test_execution.c $(filter-out obj/main.o obj/shell.o,$(OBJS))
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $^ -o $@
+
+test: bin/shell obj/test_execution
+	python3 tests/test_shell.py ./bin/shell
+	python3 tests/run_execution_test.py ./obj/test_execution
 
 clean:
-	rm $(OBJ)/*.o $(EXEC)
+	rm -f obj/*.o obj/*.d obj/test_execution bin/shell
 
-$(shell mkdir -p $(DIRS))
-
-.PHONY: run clean all
+-include $(OBJS:.o=.d)
+.PHONY: all run test clean
